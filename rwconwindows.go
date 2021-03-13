@@ -9,12 +9,17 @@ import (
 //Console type contains windows native fields, that can be accessed by its methods.
 //Methods introduce a layer of abstraction over  windows native datatypes.
 type Console struct {
+	//pointer to underlying console :*os.File type
 	filehandle *os.File
-	winhandle  win.Handle
-	info       win.ConsoleScreenBufferInfo
+	//handle required inside library :win.Handle type
+	winhandle win.Handle
+	//info-field to store returns of libInternal functions :win.ConsoleScreenbufferInfo type
+	info win.ConsoleScreenBufferInfo
 }
 
-//returns all primitives of info as int16
+//returns info field of given Console
+//
+//reduces all types in info to primitives
 func (c *Console) GetInfo() []int16 {
 	c.refreshConsoleScreenBufferInfo()
 	var (
@@ -45,7 +50,9 @@ func (c *Console) GetInfo() []int16 {
 	}
 }
 
-//returns filehandle of Console (*os.file)
+//returns filehandle of underlying Console
+//
+//Provides access to Functions of underlying console by getting its filehandle
 func (c *Console) GetFH() *os.File {
 	return c.filehandle
 }
