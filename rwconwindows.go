@@ -17,6 +17,24 @@ type Console struct {
 	info win.ConsoleScreenBufferInfo
 }
 
+//refreshes info field of registered Console;
+func (c *Console) refreshConsoleScreenBufferInfo() {
+	win.GetConsoleScreenBufferInfo(c.winhandle, &c.info)
+}
+
+//register console by handle (type: *os.File)
+func (c *Console) Init(consolePtr *os.File) {
+	c.filehandle = consolePtr
+	c.winhandle = win.Handle(consolePtr.Fd())
+}
+
+//returns filehandle of underlying Console
+//
+//Provides access to Functions of underlying console by getting its filehandle
+func (c *Console) GetFH() *os.File {
+	return c.filehandle
+}
+
 //returns info field of given Console
 //
 //reduces all types in info to primitives
@@ -50,55 +68,13 @@ func (c *Console) GetInfo() []int16 {
 	}
 }
 
-//returns filehandle of underlying Console
-//
-//Provides access to Functions of underlying console by getting its filehandle
-func (c *Console) GetFH() *os.File {
-	return c.filehandle
-}
-
-//returns height
-//
-//Rows from top to bottom of current window. Resizing window may change the actual value
-func (c *Console) GetHeight() (bottom int16) {
-	c.refreshConsoleScreenBufferInfo() //refresh c.info
-	bottom = c.info.Window.Bottom      //row count to bottom
-	return
-}
-
-//returns width
-//
-//Columns from left side to right side
-func (c *Console) GetWidth() (right int16) {
-	c.refreshConsoleScreenBufferInfo() //refresh c.info
-	right = c.info.Window.Right        //column count to right
-	return
-}
-
 //returns the current CursorPosition
 //
-//calls refreshConsoleScreenBufferInfo to get current posXY from c.info
-func (c *Console) GetCursorPosition() (X, Y int16) {
-	c.refreshConsoleScreenBufferInfo()                      //refresh c.info
+//calls refreshConsoleScreenBufferInfo() then reads CursorPosition from info
+func (c *Console) CursorGetPosition() (X, Y int16) {
+	c.refreshConsoleScreenBufferInfo()
 	X, Y = c.info.CursorPosition.X, c.info.CursorPosition.Y //extract X, Y from "CursorPosition" field in "info"
 	return
-}
-
-//register console by handle (type: *os.File)
-func (c *Console) Init(consolePtr *os.File) {
-	c.filehandle = consolePtr
-	c.winhandle = win.Handle(consolePtr.Fd())
-}
-
-//refreshes c.info field of registered Console;
-func (c *Console) refreshConsoleScreenBufferInfo() {
-	win.GetConsoleScreenBufferInfo(c.winhandle, &c.info)
-}
-
-//draws given string into console at given position
-func (c *Console) DrawAt(posX, posY int16, str string) {
-	c.CursorSetPosition(posX, posY)
-	c.GetFH().WriteString(str)
 }
 
 //sets Cursorposition of registered Console to given position
@@ -107,12 +83,34 @@ func (c *Console) CursorSetPosition(posX, posY int16) {
 	win.SetConsoleCursorPosition(c.winhandle, posXY)
 }
 
-//moves Cursor of registered Console by given offset
+//returns horizontal and vertical size of the underlying consolewindow
+func (c *Console) WindowGetSize() (horizontal, vertical int16) {
+	horizontal = c.info.Window.Right
+	vertical = c.info.Window.Bottom
+	return
+}
+
+//draws given string into console at given position
 //
-//calls GetCursorPosition to get posX, posY of Cursor
-//then sets new position using SetConsoleCursorPosition
+//cReturn = true : Cursor is returned to initial position after write
+func (c *Console) DrawAt(posX, posY int16, str string, cReturn bool) {
+	if cReturn { //cursorReturn = true
+		var x, y int16 = c.CursorGetPosition() //save initial CursorPosition
+		c.CursorSetPosition(posX, posY)
+		c.GetFH().WriteString(str)
+		c.CursorSetPosition(x, y) //return Cursor
+	} else { //cursorReturn = false
+		c.CursorSetPosition(posX, posY)
+		c.GetFH().WriteString(str)
+	}
+}
+
+//moves Cursor by given offset
+//
+//calls CursorGetPosition to get posX, posY of Cursor
+//calls SetConsoleCursorPosition to set new Position with offset
 func (c *Console) CursorMove(offsetX, offsetY int16) {
-	var posX, posY int16 = c.GetCursorPosition() //get posX & posY from ConsoleScreenBufferInfo by calling GetCursorPosition
+	var posX, posY int16 = c.CursorGetPosition() //get posX & posY from ConsoleScreenBufferInfo by calling CursorGetPosition
 	posX += offsetX                              //add offsetX
 	posY += offsetY                              //addoffsetY
 	if posX < 0 {                                //prevent negative final position
