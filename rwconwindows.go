@@ -26,6 +26,8 @@ func (c *Console) refreshConsoleScreenBufferInfo() {
 func (c *Console) Init(consolePtr *os.File) {
 	c.filehandle = consolePtr
 	c.winhandle = win.Handle(consolePtr.Fd())
+
+	//Root.dimX, Root.dimY = c.WindowGetSize()
 }
 
 //returns filehandle of underlying Console
@@ -123,6 +125,73 @@ func (c *Console) CursorMove(offsetX, offsetY int16) {
 	win.SetConsoleCursorPosition(c.winhandle, posXY) //move cursor to new position
 }
 
+/*** ELEMENT SYSTEM ***/
+
+type Node struct {
+	uid string
+	X   int16
+	Y   int16
+
+	cNodes map[string]*Node
+	cText  []Text
+}
+type Text struct {
+	parentNode *Node
+	offsetX    int16
+	offsetY    int16
+	value      string
+}
+
+//returns a New Nodeobject with given parameters
+func NodeNew(uid string, posX, posY int16) Node {
+	var newNode Node = Node{
+		uid:    uid,
+		X:      posX,
+		Y:      posY,
+		cNodes: map[string]*Node{},
+		cText:  []Text{},
+	}
+	return newNode
+}
+
+//orders a nodeobject (caller) as the child of another nodeobject (argument)
+//
+//position of child is relative to parent-position
+func (n *Node) NodeSetParent(parent *Node) {
+	parent.cNodes[n.uid] = n
+	n.X += parent.X
+	n.Y += parent.Y
+}
+
+//Adds a Textfield at a relative position to a given node
+func (n *Node) NodeNewText(value string, offsetX, offsetY int16) {
+	n.cText = append(n.cText, Text{
+		n,
+		offsetX,
+		offsetY,
+		value,
+	})
+}
+
+//draws all Textfields of a given Node
+func (n *Node) draw() {
+	/*
+		for _, childText := range n.cText {
+			fmt.Println("TextElement of '", n.uid, "' drawn at: {", n.X+childText.offsetX, "|", n.Y+childText.offsetY, "}")
+		}
+		fmt.Println("Node finished drawing:", n.uid)*/
+}
+
+//draws a node and all of its children
+//
+//calls draw() for a node and all of its children
+func (n *Node) render() {
+	n.draw()
+	for _, childNode := range n.cNodes {
+		childNode.render()
+	}
+}
+
 //enables VTP for Console
 //
 //Virtual Terminal Processing has flawed cursorpositioning and needs further care when implemented
@@ -132,42 +201,3 @@ func (c *Console) EnableVTProcessing() {
 	win.GetConsoleMode(c.winhandle, &currentmode)
 	win.SetConsoleMode(c.winhandle, currentmode|win.ENABLE_VIRTUAL_TERMINAL_PROCESSING|win.DISABLE_NEWLINE_AUTO_RETURN)
 }
-
-/*********************elements***********************
-type element struct {
-	posX int16
-	posY int16
-
-	parent   *element
-	children []*element
-
-	contents string
-}
-
-//DocRoot is the RootElement
-//
-//new elements not added to a certain parent are added to DocRoot
-var DocRoot element = element{
-	posX: 0,
-	posY: 0,
-}
-
-func (p *element) NewElement(posX, posY int16, val string) (newEl element) {
-	newEl = element{ //							create new element
-		posX:     posX, //at given X relative to parent
-		posY:     posY, //at given Y relative to parent
-		parent:   p,    //as a child of the parent NewElement was called on
-		contents: val,  //with the desired value
-	}
-	p.children = append(p.children, &newEl)
-	return
-}
-func (p *element) DrawElement(c Console, posX, posY int16) {
-	for i := 0; i < len(p.children); i++ {
-		var child *element = p.children[i] //get ref to child-element
-
-		child.DrawElements(c, p.posX+child.posX, p.posY+child.posY)
-	}
-
-}
-*/
