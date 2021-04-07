@@ -1,6 +1,7 @@
 package rwconwindows
 
 import (
+	fmt "fmt"
 	"os"
 
 	win "golang.org/x/sys/windows"
@@ -175,11 +176,10 @@ func (n *Node) NodeNewText(value string, offsetX, offsetY int16) {
 
 //draws all Textfields of a given Node
 func (n *Node) draw() {
-	/*
-		for _, childText := range n.cText {
-			fmt.Println("TextElement of '", n.uid, "' drawn at: {", n.X+childText.offsetX, "|", n.Y+childText.offsetY, "}")
-		}
-		fmt.Println("Node finished drawing:", n.uid)*/
+	for _, childText := range n.cText {
+		fmt.Println("TextElement of '", n.uid, "' drawn at: {", n.X+childText.offsetX, "|", n.Y+childText.offsetY, "}")
+	}
+	fmt.Println("Node finished drawing:", n.uid)
 }
 
 //draws a node and all of its children
